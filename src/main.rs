@@ -35,8 +35,7 @@ fn load_css() {
     );
 }
 
-fn build_ui(app: &Application) {
-    // Create two buttons
+fn sim_controls() -> gtk::Box {
     let b_start = Button::builder()
         .label("Start")
         .margin_top(12)
@@ -90,7 +89,11 @@ fn build_ui(app: &Application) {
     controls.append(&b_start);
     controls.append(&b_pause);
     controls.append(&b_stop);
+    controls
+}
 
+fn build_ui(app: &Application) {
+    let controls = sim_controls();
     let window = ApplicationWindow::builder()
         .application(app)
         .title("Nexus")
