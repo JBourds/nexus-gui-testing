@@ -3,6 +3,15 @@
     font-size: 2em;
 }
 
+#exit-button:hover {
+    background-color: var(--color-kg-button-hover);
+    cursor: pointer;
+}
+
+#nexus-window {
+    background-color: var(--color-kg-surface);
+}
+
 .green {
     color: var(--lotusGreen);
 }
@@ -13,6 +22,10 @@
 
 .red {
     color: var(--lotusRed);
+}
+
+.bg-transparent {
+    background-color: transparent;
 }
 
 .bg-green {

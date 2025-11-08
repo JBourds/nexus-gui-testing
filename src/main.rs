@@ -1,5 +1,6 @@
 use gtk::gdk::Display;
-use gtk::{self, Application, ApplicationWindow, glib};
+use gtk::prelude::*;
+use gtk::{self, Align, Application, ApplicationWindow, Overlay, glib};
 use gtk::{CssProvider, prelude::*};
 
 mod controls;
@@ -8,14 +9,9 @@ mod grid;
 const APP_ID: &str = "org.nexus.Simulator";
 
 fn main() -> glib::ExitCode {
-    // Create a new application
     let app = Application::builder().application_id(APP_ID).build();
-
-    // Connect to signals
     app.connect_startup(|_| load_css());
     app.connect_activate(build_ui);
-
-    // Run the application
     app.run()
 }
 
@@ -43,8 +39,33 @@ fn build_title() -> gtk::Label {
         .build()
 }
 
+fn build_exit(app: &Application) -> gtk::Button {
+    let exit_button = gtk::Button::builder()
+        .label("x")
+        .name("exit-button")
+        .halign(Align::End)
+        .valign(Align::Start)
+        .margin_top(12)
+        .margin_bottom(12)
+        .margin_start(12)
+        .margin_end(12)
+        .build();
+    exit_button.connect_clicked(glib::clone!(
+        #[weak]
+        app,
+        move |_| {
+            app.quit();
+        }
+    ));
+    exit_button.add_css_class("red");
+    exit_button.add_css_class("bg-transparent");
+
+    exit_button
+}
+
 fn build_ui(app: &Application) {
     let title = build_title();
+    let exit = build_exit(app);
     let grid = grid::build_grid();
     let controls = controls::build_controls();
 
@@ -53,12 +74,17 @@ fn build_ui(app: &Application) {
     vbox.append(&grid);
     vbox.append(&controls);
 
+    let overlay = Overlay::new();
+    overlay.add_overlay(&vbox);
+    overlay.add_overlay(&exit);
+
     let window = gtk::ApplicationWindow::builder()
         .application(app)
         .title("Nexus")
+        .name("nexus-window")
         .default_width(800)
         .default_height(600)
-        .child(&vbox)
+        .child(&overlay)
         .build();
 
     window.present();
