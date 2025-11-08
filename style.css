@@ -1,3 +1,8 @@
+#title {
+    color: var(--carpYellow);
+    font-size: 2em;
+}
+
 .green {
     color: var(--lotusGreen);
 }
