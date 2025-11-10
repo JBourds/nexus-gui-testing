@@ -1,7 +1,12 @@
+use std::sync::{Arc, Mutex};
+
+use gtk::glib::clone;
 use gtk::{self, Button, Orientation};
 use gtk::{Align, prelude::*};
 
-pub fn build_controls() -> gtk::Box {
+use crate::State;
+
+pub fn build_controls(state: Arc<Mutex<State>>) -> gtk::Box {
     let b_start = Button::builder()
         .label("Start")
         .margin_top(12)
@@ -13,9 +18,17 @@ pub fn build_controls() -> gtk::Box {
         .valign(Align::Center)
         .build();
     b_start.add_css_class("bg-green");
-    b_start.connect_clicked(|_| {
-        println!("Started!");
-    });
+
+    // clone! macro helps move an Arc into the closure safely
+    b_start.connect_clicked(clone!(
+        #[strong]
+        state,
+        move |_| {
+            let mut guard = state.lock().unwrap();
+            *guard = State::Running;
+            println!("Started!");
+        }
+    ));
 
     let b_pause = Button::builder()
         .label("Pause")
@@ -28,12 +41,18 @@ pub fn build_controls() -> gtk::Box {
         .valign(Align::Center)
         .build();
     b_pause.add_css_class("bg-yellow");
-    b_pause.connect_clicked(|_| {
-        println!("Paused!");
-    });
+    b_pause.connect_clicked(clone!(
+        #[strong]
+        state,
+        move |_| {
+            let mut guard = state.lock().unwrap();
+            *guard = State::Paused;
+            println!("Paused!");
+        }
+    ));
 
     let b_stop = Button::builder()
-        .label("Stop")
+        .label("Reset")
         .margin_top(12)
         .margin_bottom(12)
         .margin_start(12)
@@ -44,9 +63,15 @@ pub fn build_controls() -> gtk::Box {
         .valign(Align::Center)
         .build();
     b_stop.add_css_class("bg-red");
-    b_stop.connect_clicked(|_| {
-        println!("Stopped!");
-    });
+    b_stop.connect_clicked(clone!(
+        #[strong]
+        state,
+        move |_| {
+            let mut guard = state.lock().unwrap();
+            *guard = State::Reset;
+            println!("Reset!");
+        }
+    ));
 
     let controls = gtk::Box::builder()
         .halign(Align::Center)

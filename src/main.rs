@@ -2,6 +2,7 @@ use rand::prelude::*;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use gtk::gdk::Display;
@@ -16,6 +17,53 @@ mod controls;
 mod grid;
 
 const APP_ID: &str = "org.nexus.Simulator";
+const NODES: [Node; 5] = [
+    Node {
+        name: "Node 1",
+        coords: Coords {
+            x: 1.0,
+            y: 1.0,
+            z: 0.0,
+        },
+        battery: 100.0,
+    },
+    Node {
+        name: "Node 2",
+        coords: Coords {
+            x: 100.0,
+            y: 0.0,
+            z: 0.0,
+        },
+        battery: 75.0,
+    },
+    Node {
+        name: "Node 3",
+        coords: Coords {
+            x: 0.0,
+            y: 0.0,
+            z: 0.0,
+        },
+        battery: 0.0,
+    },
+    Node {
+        name: "Node 4",
+        coords: Coords {
+            x: 0.0,
+            y: 1.0,
+            z: 0.0,
+        },
+        battery: 0.01,
+    },
+    Node {
+        name: "Node 5",
+        coords: Coords {
+            x: -30.0,
+            y: -40.0,
+            z: 0.0,
+        },
+        battery: 100.0,
+    },
+];
 
 fn main() -> glib::ExitCode {
     let app = Application::builder().application_id(APP_ID).build();
@@ -72,97 +120,60 @@ fn build_exit(app: &Application) -> gtk::Button {
     exit_button
 }
 
+#[derive(Debug)]
+enum State {
+    Paused,
+    Running,
+    Reset,
+}
+
 fn build_ui(app: &Application) {
-    let nodes = Rc::new(RefCell::new(
-        [
-            Node {
-                name: "Node 1",
-                coords: Coords {
-                    x: 1.0,
-                    y: 1.0,
-                    z: 0.0,
-                },
-                battery: 100.0,
-            },
-            Node {
-                name: "Node 2",
-                coords: Coords {
-                    x: 100.0,
-                    y: 0.0,
-                    z: 0.0,
-                },
-                battery: 75.0,
-            },
-            Node {
-                name: "Node 3",
-                coords: Coords {
-                    x: 0.0,
-                    y: 0.0,
-                    z: 0.0,
-                },
-                battery: 0.0,
-            },
-            Node {
-                name: "Node 4",
-                coords: Coords {
-                    x: 0.0,
-                    y: 1.0,
-                    z: 0.0,
-                },
-                battery: 0.01,
-            },
-            Node {
-                name: "Node 5",
-                coords: Coords {
-                    x: -30.0,
-                    y: -40.0,
-                    z: 0.0,
-                },
-                battery: 100.0,
-            },
-        ]
-        .into_iter()
-        .fold(HashMap::new(), |mut map, n| {
+    let nodes = Rc::new(RefCell::new(NODES.into_iter().fold(
+        HashMap::new(),
+        |mut map, n| {
             map.insert(n.name.to_string(), n);
             map
-        }),
-    ));
+        },
+    )));
+
     let title = build_title();
     let exit = build_exit(app);
     let grid = grid::build_grid(Rc::clone(&nodes));
-    let controls = controls::build_controls();
-    let button = Button::builder()
-        .label("Press me!")
-        .margin_top(12)
-        .margin_bottom(12)
-        .margin_start(12)
-        .margin_end(12)
-        .build();
+    let state = Arc::new(Mutex::new(State::Paused));
+    let controls = controls::build_controls(state.clone());
 
-    button.connect_clicked(clone!(
-        #[weak]
-        grid,
-        #[weak]
-        nodes,
-        move |_| {
-            let mut rand = rand::rng();
-            for (_, node) in nodes.borrow_mut().iter_mut() {
-                node.battery = (node.battery + (rand.random::<f64>() - 0.5) * 3.0).max(0.0);
-                if node.battery > 0.0 {
-                    node.coords.x += rand.random::<f64>() * 5.0;
-                    node.coords.y += rand.random::<f64>() * 5.0;
-                    node.coords.z += rand.random::<f64>() * 5.0;
+    let mut rand = rand::rng();
+    let grid_clone = grid.clone();
+    glib::timeout_add_local(Duration::from_millis(100), move || {
+        let mut guard = state.lock().unwrap();
+        match *guard {
+            State::Paused => {}
+            State::Running => {
+                for (_, node) in nodes.borrow_mut().iter_mut() {
+                    node.battery = (node.battery + (rand.random::<f64>() - 0.5) * 3.0).max(0.0);
+                    if node.battery > 0.0 {
+                        node.coords.x += rand.random::<f64>() * 5.0;
+                        node.coords.y += rand.random::<f64>() * 5.0;
+                        node.coords.z += rand.random::<f64>() * 5.0;
+                    }
                 }
+                grid_clone.update_view();
             }
-            grid.update_view();
+            State::Reset => {
+                *nodes.borrow_mut() = NODES.into_iter().fold(HashMap::new(), |mut map, n| {
+                    map.insert(n.name.to_string(), n);
+                    map
+                });
+                *guard = State::Paused;
+            }
         }
-    ));
-
+        grid_clone.update_view();
+        glib::ControlFlow::Continue
+    });
     let vbox = gtk::Box::new(gtk::Orientation::Vertical, 15);
     vbox.append(&title);
     vbox.append(&grid);
     vbox.append(&controls);
-    vbox.append(&button);
 
     let overlay = Overlay::new();
     overlay.add_overlay(&vbox);
