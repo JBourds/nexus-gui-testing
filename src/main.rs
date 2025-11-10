@@ -1,3 +1,4 @@
+use rand::prelude::*;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
@@ -128,7 +129,7 @@ fn build_ui(app: &Application) {
     ));
     let title = build_title();
     let exit = build_exit(app);
-    let grid = grid::build_grid(nodes);
+    let grid = grid::build_grid(Rc::clone(&nodes));
     let controls = controls::build_controls();
     let button = Button::builder()
         .label("Press me!")
@@ -141,7 +142,18 @@ fn build_ui(app: &Application) {
     button.connect_clicked(clone!(
         #[weak]
         grid,
+        #[weak]
+        nodes,
         move |_| {
+            let mut rand = rand::rng();
+            for (_, node) in nodes.borrow_mut().iter_mut() {
+                node.battery = (node.battery + (rand.random::<f64>() - 0.5) * 3.0).max(0.0);
+                if node.battery > 0.0 {
+                    node.coords.x += rand.random::<f64>() * 5.0;
+                    node.coords.y += rand.random::<f64>() * 5.0;
+                    node.coords.z += rand.random::<f64>() * 5.0;
+                }
+            }
             grid.update_view();
         }
     ));
