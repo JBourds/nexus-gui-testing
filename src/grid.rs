@@ -1,3 +1,4 @@
+use crate::colors::battery_colors;
 use crate::node::Node;
 use gtk::cairo;
 use gtk::prelude::*;
@@ -162,18 +163,6 @@ pub mod imp {
             let label = format!("{:.2}", y_coord);
             cr.move_to(TEXT_PADDING, y_pixel);
             cr.show_text(&label).expect("Failed to draw text");
-        }
-    }
-
-    fn battery_colors(battery: f64) -> (f64, f64, f64) {
-        let battery = battery.clamp(0.0, 100.0);
-        if battery == 0.0 {
-            (0.0, 0.0, 0.0)
-        } else if battery <= 1.0 {
-            (0.5, 0.0, 0.0)
-        } else {
-            let t = battery / 100.0;
-            (1.0 - t, t, 0.0)
         }
     }
 

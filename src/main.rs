@@ -10,8 +10,9 @@ use gtk::gdk::Display;
 use gtk::prelude::*;
 use gtk::{self, Align, Application, Overlay, glib};
 
-use crate::node::NODES;
+use crate::node::{NODES, build_node_list};
 
+mod colors;
 mod controls;
 mod grid;
 mod node;
@@ -98,9 +99,13 @@ fn build_ui(app: &Application) {
     vbox.append(&title);
     vbox.append(&grid);
     vbox.append(&controls);
+    let hbox = gtk::Box::new(gtk::Orientation::Horizontal, 10);
+    hbox.append(&vbox);
+    let node_list = build_node_list(Rc::clone(&nodes));
+    hbox.append(&node_list);
 
     let overlay = Overlay::new();
-    overlay.add_overlay(&vbox);
+    overlay.add_overlay(&hbox);
     overlay.add_overlay(&exit);
 
     let window = gtk::ApplicationWindow::builder()
