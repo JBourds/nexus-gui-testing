@@ -1,8 +1,7 @@
 use gtk::cairo;
 use gtk::prelude::*;
 use gtk::subclass::prelude::ObjectSubclassIsExt;
-use gtk::{self, Align, Box as GtkBox, DrawingArea, Orientation, glib};
-use imp::Coords;
+use gtk::{self, glib};
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
@@ -15,56 +14,8 @@ const NODE_DIAMETER: f64 = 2.0 * NODE_RADIUS;
 const GRID_MARGIN: f64 = 45.0;
 const TEXT_PADDING: f64 = 5.0;
 
-const NODES: [Node; 5] = [
-    Node {
-        name: "Node 1",
-        coords: Coords {
-            x: 1.0,
-            y: 1.0,
-            z: 0.0,
-        },
-        battery: 100.0,
-    },
-    Node {
-        name: "Node 2",
-        coords: Coords {
-            x: 100.0,
-            y: 0.0,
-            z: 0.0,
-        },
-        battery: 75.0,
-    },
-    Node {
-        name: "Node 3",
-        coords: Coords {
-            x: 0.0,
-            y: 0.0,
-            z: 0.0,
-        },
-        battery: 0.0,
-    },
-    Node {
-        name: "Node 4",
-        coords: Coords {
-            x: 0.0,
-            y: 1.0,
-            z: 0.0,
-        },
-        battery: 0.01,
-    },
-    Node {
-        name: "Node 5",
-        coords: Coords {
-            x: -30.0,
-            y: -40.0,
-            z: 0.0,
-        },
-        battery: 100.0,
-    },
-];
-
-pub fn build_grid() -> NodeGrid {
-    let grid = NodeGrid::new();
+pub fn build_grid(nodes: Rc<RefCell<HashMap<String, Node>>>) -> NodeGrid {
+    let grid = NodeGrid::new(nodes);
     grid.set_vexpand(true);
     grid.set_hexpand(true);
     grid.set_margin_top(24);
@@ -74,9 +25,12 @@ pub fn build_grid() -> NodeGrid {
     grid
 }
 
-mod imp {
+pub mod imp {
+    use std::sync::OnceLock;
+
     use super::*;
 
+    use gtk::glib::subclass::Signal;
     use gtk::glib::subclass::object::ObjectImpl;
     use gtk::glib::subclass::types::{ObjectSubclass, ObjectSubclassExt};
     use gtk::subclass::prelude::*;
@@ -98,11 +52,11 @@ mod imp {
     // NodeGrid will manage the state and drawing logic
     #[derive(Default)]
     pub struct NodeGrid {
-        pub nodes: Rc<RefCell<HashMap<String, Node>>>,
+        pub nodes: Rc<RefCell<Rc<RefCell<HashMap<String, Node>>>>>,
     }
 
     impl NodeGrid {
-        fn update_view(&self) {
+        pub fn update_view(&self) {
             self.obj().queue_draw();
         }
     }
@@ -120,14 +74,19 @@ mod imp {
             let widget = self.obj();
             let nodes = self.nodes.clone();
             widget.set_draw_func(move |area, cr, width, height| {
-                if nodes.borrow().is_empty() {
+                if nodes.borrow().borrow().is_empty() {
                     return;
                 }
-                let nodes = &nodes.borrow();
-                let ctx = ScaleCtx::new(width as f64, height as f64, nodes);
+                let nodes = nodes.borrow();
+                let ctx = ScaleCtx::new(width as f64, height as f64, &nodes.borrow());
                 draw_cartesian_grid(cr, &ctx);
-                draw_nodes(cr, &ctx, nodes);
+                draw_nodes(cr, &ctx, &nodes.borrow());
             });
+        }
+
+        fn signals() -> &'static [Signal] {
+            static SIGNALS: OnceLock<Vec<Signal>> = OnceLock::new();
+            SIGNALS.get_or_init(|| vec![Signal::builder("redraw").build()])
         }
     }
     impl WidgetImpl for NodeGrid {}
@@ -147,18 +106,10 @@ mod imp {
         )
     }
 
-    fn pixel_scales(width: f64, height: f64, range_x: f64, range_y: f64) -> (f64, f64) {
-        let scale_x = (width - NODE_DIAMETER) / range_x;
-        let scale_y = (height - NODE_DIAMETER) / range_y;
-        (scale_x, scale_y)
-    }
-
     #[derive(Debug)]
     struct ScaleCtx {
         pub min_x: f64,
         pub min_y: f64,
-        pub max_x: f64,
-        pub max_y: f64,
         pub scale_x: f64,
         pub scale_y: f64,
         pub range_x: f64,
@@ -183,8 +134,6 @@ mod imp {
             Self {
                 min_x,
                 min_y,
-                max_x,
-                max_y,
                 scale_x,
                 scale_y,
                 range_x,
@@ -219,7 +168,6 @@ mod imp {
             cr.stroke().expect("Failed to draw vertical line");
 
             let label = format!("{:.2}", x_coord);
-            // the / 2.0 makes the text a little tighter to bottom of grid
             cr.move_to(x_pixel - TEXT_PADDING, ctx.height - GRID_MARGIN / 2.0);
             cr.show_text(&label).expect("Failed to draw text");
         }
@@ -239,6 +187,7 @@ mod imp {
             cr.show_text(&label).expect("Failed to draw text");
         }
     }
+
     fn battery_colors(battery: f64) -> (f64, f64, f64) {
         let battery = battery.clamp(0.0, 100.0);
         if battery == 0.0 {
@@ -277,15 +226,15 @@ glib::wrapper! {
 }
 
 impl NodeGrid {
-    fn new() -> Self {
+    fn new(nodes: Rc<RefCell<HashMap<String, Node>>>) -> Self {
         let obj: Self = glib::Object::new();
-        {
-            let imp = obj.imp();
-            let mut nodes = imp.nodes.borrow_mut();
-            for n in NODES.iter() {
-                nodes.insert(n.name.to_string(), n.clone());
-            }
-        }
+        let imp = obj.imp();
+        *imp.nodes.borrow_mut() = nodes.clone();
+        imp.update_view();
         obj
+    }
+
+    pub fn update_view(&self) {
+        self.imp().update_view();
     }
 }
