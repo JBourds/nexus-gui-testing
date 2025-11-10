@@ -1,4 +1,5 @@
 use core::fmt;
+use gtk::Button;
 use gtk::CssProvider;
 use gtk::STYLE_PROVIDER_PRIORITY_APPLICATION;
 use gtk::prelude::*;
@@ -154,21 +155,48 @@ fn build_node_widget(node: &Node) -> gtk::Box {
     vbox
 }
 
-pub fn build_node_list(nodes: Rc<RefCell<HashMap<String, Node>>>) -> ScrolledWindow {
+pub fn build_node_list(nodes: Rc<RefCell<HashMap<String, Node>>>) -> gtk::Box {
+    // Create the ListBox and populate it
     let list_box = ListBox::builder()
         .valign(Align::Center)
         .vexpand(true)
         .build();
+
     // Lexicographical sort by node class
     let borrow = nodes.borrow();
     let mut names = borrow.keys().collect::<Vec<&String>>();
     names.sort();
     for key in names {
-        list_box.append(&build_node_widget(nodes.borrow().get(key).unwrap()));
+        list_box.append(&build_node_widget(borrow.get(key).unwrap()));
     }
-    ScrolledWindow::builder()
+
+    let minimize_button = Button::with_label("−");
+    minimize_button.set_halign(Align::End);
+
+    let scrolled_window = ScrolledWindow::builder()
         .hscrollbar_policy(PolicyType::Never)
+        .name("node-scroll")
         .min_content_width(400)
+        .max_content_width(600)
         .child(&list_box)
-        .build()
+        .build();
+
+    let scrolled_window_clone = scrolled_window.clone();
+    minimize_button.connect_clicked(move |btn| {
+        let is_visible = scrolled_window_clone.is_visible();
+        scrolled_window_clone.set_visible(!is_visible);
+
+        if is_visible {
+            btn.set_label("+");
+        } else {
+            btn.set_label("−");
+        }
+    });
+
+    let vbox = gtk::Box::new(Orientation::Vertical, 10);
+    vbox.set_halign(Align::End);
+    vbox.append(&minimize_button);
+    vbox.append(&scrolled_window);
+
+    vbox
 }

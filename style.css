@@ -12,6 +12,10 @@
     background-color: var(--color-kg-surface);
 }
 
+#node-scroll {
+    background-color: var(--color-kg-surface);
+}
+
 .green {
     color: var(--lotusGreen);
 }

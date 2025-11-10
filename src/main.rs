@@ -58,7 +58,7 @@ fn build_exit(app: &Application) -> gtk::Button {
     let exit_button = gtk::Button::builder()
         .label("x")
         .name("exit-button")
-        .halign(Align::End)
+        .halign(Align::Start)
         .valign(Align::Start)
         .margin_top(12)
         .margin_bottom(12)
@@ -99,14 +99,16 @@ fn build_ui(app: &Application) {
     vbox.append(&title);
     vbox.append(&grid);
     vbox.append(&controls);
+
     let hbox = gtk::Box::new(gtk::Orientation::Horizontal, 10);
     hbox.append(&vbox);
+
     let node_list = build_node_list(Rc::clone(&nodes));
-    hbox.append(&node_list);
 
     let overlay = Overlay::new();
     overlay.add_overlay(&hbox);
     overlay.add_overlay(&exit);
+    overlay.add_overlay(&node_list);
 
     let window = gtk::ApplicationWindow::builder()
         .application(app)
