@@ -5,16 +5,16 @@ use std::rc::Rc;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
+use gtk::CssProvider;
 use gtk::gdk::Display;
-use gtk::glib::clone;
-use gtk::{self, Align, Application, ApplicationWindow, Overlay, glib};
-use gtk::{Button, prelude::*};
-use gtk::{CssProvider, prelude::*};
+use gtk::prelude::*;
+use gtk::{self, Align, Application, Overlay, glib};
 
-use crate::grid::imp::{Coords, Node};
+use crate::node::{Coords, Node};
 
 mod controls;
 mod grid;
+mod node;
 
 const APP_ID: &str = "org.nexus.Simulator";
 const NODES: [Node; 5] = [

@@ -1,3 +1,4 @@
+use crate::node::Node;
 use gtk::cairo;
 use gtk::prelude::*;
 use gtk::subclass::prelude::ObjectSubclassIsExt;
@@ -6,11 +7,8 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 
-use crate::grid::imp::Node;
-
 const NUM_SQUARES: usize = 10;
 const NODE_RADIUS: f64 = 5.0;
-const NODE_DIAMETER: f64 = 2.0 * NODE_RADIUS;
 const GRID_MARGIN: f64 = 45.0;
 const TEXT_PADDING: f64 = 5.0;
 
@@ -26,29 +24,13 @@ pub fn build_grid(nodes: Rc<RefCell<HashMap<String, Node>>>) -> NodeGrid {
 }
 
 pub mod imp {
-    use std::sync::OnceLock;
 
     use super::*;
 
-    use gtk::glib::subclass::Signal;
     use gtk::glib::subclass::object::ObjectImpl;
     use gtk::glib::subclass::types::{ObjectSubclass, ObjectSubclassExt};
     use gtk::subclass::prelude::*;
     use gtk::subclass::widget::WidgetImpl;
-
-    #[derive(Clone, Copy, Default, Debug)]
-    pub struct Coords {
-        pub x: f64,
-        pub y: f64,
-        pub z: f64,
-    }
-
-    #[derive(Clone, Default, Debug)]
-    pub struct Node {
-        pub name: &'static str,
-        pub coords: Coords,
-        pub battery: f64,
-    }
     // NodeGrid will manage the state and drawing logic
     #[derive(Default)]
     pub struct NodeGrid {
@@ -73,7 +55,7 @@ pub mod imp {
             self.parent_constructed();
             let widget = self.obj();
             let nodes = self.nodes.clone();
-            widget.set_draw_func(move |area, cr, width, height| {
+            widget.set_draw_func(move |_area, cr, width, height| {
                 if nodes.borrow().borrow().is_empty() {
                     return;
                 }
