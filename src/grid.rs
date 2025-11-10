@@ -83,11 +83,6 @@ pub mod imp {
                 draw_nodes(cr, &ctx, &nodes.borrow());
             });
         }
-
-        fn signals() -> &'static [Signal] {
-            static SIGNALS: OnceLock<Vec<Signal>> = OnceLock::new();
-            SIGNALS.get_or_init(|| vec![Signal::builder("redraw").build()])
-        }
     }
     impl WidgetImpl for NodeGrid {}
     impl DrawingAreaImpl for NodeGrid {}
