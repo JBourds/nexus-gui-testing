@@ -26,6 +26,8 @@ pub fn build_grid(nodes: Rc<RefCell<HashMap<String, Node>>>) -> NodeGrid {
 
 pub mod imp {
 
+    use crate::colors::RGB;
+
     use super::*;
 
     use gtk::glib::subclass::object::ObjectImpl;
@@ -171,7 +173,7 @@ pub mod imp {
             let x_pixel = ctx.x_coord_to_pixel(node.coords.x);
             let y_pixel = ctx.y_coord_to_pixel(node.coords.y);
 
-            let (r, g, b) = battery_colors(node.battery);
+            let Rgb { r, g, b } = battery_colors(node.battery);
             cr.set_source_rgb(r, g, b);
             cr.arc(
                 x_pixel,
